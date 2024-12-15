@@ -41,7 +41,7 @@ class Selectable extends StatefulWidget {
     this.useExperimentalPopupMenu = false,
     required this.contextMenuBuilder,
   });
-  final TextSelectionToolbar? Function(
+  final Widget? Function(
       {TextSelectionToolbarAnchors anchors,
       SelectableController? controler}) contextMenuBuilder;
 
