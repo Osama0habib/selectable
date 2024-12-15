@@ -39,7 +39,11 @@ class Selectable extends StatefulWidget {
     this.scrollController,
     this.topOverlayHeight = 0,
     this.useExperimentalPopupMenu = false,
+    required this.contextMenuBuilder,
   });
+  final TextSelectionToolbar? Function(
+      {TextSelectionToolbarAnchors anchors,
+      SelectableController? controler}) contextMenuBuilder;
 
   final Widget child;
   final Color? selectionColor;
@@ -462,6 +466,9 @@ class _SelectableState extends State<Selectable>
   Iterable<SelectableMenuItem> get menuItems =>
       widget.popupMenuItems ?? _defaultMenuItems;
 
+
+
+
   @override
   SelectableController? get controller => _selectionController;
 
@@ -533,6 +540,13 @@ class _SelectableState extends State<Selectable>
     if (!mounted) return;
     _refresh(() => _buildHelper.showPopupMenu = false);
   }
+
+  @override
+  TextSelectionToolbar? Function(
+      {TextSelectionToolbarAnchors anchors,
+      SelectableController? controler}) get contextMenuBuilder => widget.contextMenuBuilder;
+
+
 }
 
 //

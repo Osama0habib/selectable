@@ -133,6 +133,11 @@ class _MyHomePageState extends State<MyHomePage> {
               (context, index) => Stack(
                 children: [
                   Selectable(
+                    contextMenuBuilder: (
+                        {TextSelectionToolbarAnchors? anchors,
+                        SelectableController? controler}) {
+
+                    },
                     selectWordOnDoubleTap: true,
                     topOverlayHeight:
                         kToolbarHeight + MediaQuery.paddingOf(context).top,
