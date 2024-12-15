@@ -55,9 +55,9 @@ mixin SelectionDelegate {
   SelectableController? get controller;
 
   Iterable<SelectableMenuItem> get menuItems;
-  TextSelectionToolbar? Function(
-      {TextSelectionToolbarAnchors anchors,
-      SelectableController? controler}) get contextMenuBuilder;
+  Widget Function(
+      TextSelectionToolbarAnchors anchors,
+      SelectableController? controler)? get contextMenuBuilder;
 
   void hidePopupMenu() {}
 
@@ -66,8 +66,8 @@ mixin SelectionDelegate {
     final buttonItems = _buttonItems();
     // print('buildMenu: buttonItems=$buttonItems');
 
-    return contextMenuBuilder(anchors: TextSelectionToolbarAnchors(
-        primaryAnchor: primaryAnchor, secondaryAnchor: secondaryAnchor),controler: controller) ??
+    return contextMenuBuilder != null ? contextMenuBuilder!(TextSelectionToolbarAnchors(
+        primaryAnchor: primaryAnchor, secondaryAnchor: secondaryAnchor),controller) :
         AdaptiveTextSelectionToolbar(
           anchors: TextSelectionToolbarAnchors(
               primaryAnchor: primaryAnchor, secondaryAnchor: secondaryAnchor), children: [],

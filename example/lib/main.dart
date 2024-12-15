@@ -134,9 +134,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 children: [
                   Selectable(
                     contextMenuBuilder: (
-                        {TextSelectionToolbarAnchors? anchors,
-                        SelectableController? controler}) {
-
+                        TextSelectionToolbarAnchors anchors,
+                        SelectableController? controler) {
+return AdaptiveTextSelectionToolbar(children: [], anchors: anchors) ;
                     },
                     selectWordOnDoubleTap: true,
                     topOverlayHeight:

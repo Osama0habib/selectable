@@ -41,9 +41,7 @@ class Selectable extends StatefulWidget {
     this.useExperimentalPopupMenu = false,
     required this.contextMenuBuilder,
   });
-  final Widget? Function(
-      {TextSelectionToolbarAnchors anchors,
-      SelectableController? controler}) contextMenuBuilder;
+  final Widget Function(TextSelectionToolbarAnchors anchors, SelectableController? controler)? contextMenuBuilder;
 
   final Widget child;
   final Color? selectionColor;
@@ -542,9 +540,9 @@ class _SelectableState extends State<Selectable>
   }
 
   @override
-  TextSelectionToolbar? Function(
-      {TextSelectionToolbarAnchors anchors,
-      SelectableController? controler}) get contextMenuBuilder => widget.contextMenuBuilder;
+  Widget Function(
+      TextSelectionToolbarAnchors anchors,
+      SelectableController? controler)? get contextMenuBuilder => widget.contextMenuBuilder;
 
 
 }
