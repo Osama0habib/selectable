@@ -280,7 +280,7 @@ class _SelectableState extends State<Selectable>
       key: _globalKey,
       children: <Widget>[
         GestureDetector(
-          behavior: HitTestBehavior.opaque,
+          behavior: HitTestBehavior.translucent,
           onLongPressStart: widget.selectWordOnLongPress
               ? (details) => _localTapOrLongPressPt = details.localPosition
               : null,
@@ -437,6 +437,7 @@ class _SelectableState extends State<Selectable>
   }
 
   void _onTap(Offset? localPosition) {
+    print("ontapppp");
     if (!mounted) return;
     final pt = localPosition;
     // dmPrint('onTap at: $pt');
