@@ -290,7 +290,7 @@ class _SelectableState extends State<Selectable>
           onTapDown: ignoreTap
               ? null
               : (details) => _localTapOrLongPressPt = details.localPosition,
-          // onTap: ignoreTap ? null : () => _onTap(_localTapOrLongPressPt),
+          onTap: ignoreTap ? null : () => _onTap(_localTapOrLongPressPt),
           onDoubleTapDown: widget.selectWordOnDoubleTap
               ? (details) => _localTapOrLongPressPt = details.localPosition
               : null,
