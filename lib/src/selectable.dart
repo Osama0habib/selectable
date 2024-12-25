@@ -313,10 +313,11 @@ class _SelectableState extends State<Selectable>
                     )
                 : null,
             child: IgnorePointer(
+              ignoring: false,
               // Ignore gestures (e.g. taps) on the child if text is selected.
-              ignoring: widget.showSelectionControls &&
-                  (_selections.dragInfo.isSelectingWordOrDraggingHandle ||
-                      (_selections.main?.isTextSelected ?? false)),
+              // ignoring: widget.showSelectionControls &&
+              //     (_selections.dragInfo.isSelectingWordOrDraggingHandle ||
+              //         (_selections.main?.isTextSelected ?? false)),
               child: widget.child,
             ),
           ),
