@@ -280,7 +280,7 @@ class _SelectableState extends State<Selectable>
       key: _globalKey,
       children: <Widget>[
         GestureDetector(
-          behavior: HitTestBehavior.translucent,
+          behavior: HitTestBehavior.deferToChild,
           onLongPressStart: widget.selectWordOnLongPress
               ? (details) => _localTapOrLongPressPt = details.localPosition
               : null,
