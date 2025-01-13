@@ -277,6 +277,8 @@ class _SelectableState extends State<Selectable>
             : Theme.of(context).colorScheme.primary.withOpacity(opacity));
 
     final result = Stack(
+      clipBehavior: Clip.none,
+      fit: StackFit.loose,
       key: _globalKey,
       children: <Widget>[
         GestureDetector(
