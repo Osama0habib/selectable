@@ -174,12 +174,16 @@ class SelectableBuildHelper {
         context, viewport, selectionRects, delegate, topOverlayHeight, false);
 
     _popupMenuOverlayEntry = OverlayEntry(builder: (context) => menu);
-    Overlay.of(context).insert(_popupMenuOverlayEntry!);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Overlay.of(context).insert(_popupMenuOverlayEntry!);
+    });
   }
 
   void removePopupMenu() {
-    _popupMenuOverlayEntry?.remove();
-    _popupMenuOverlayEntry = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _popupMenuOverlayEntry?.remove();
+      _popupMenuOverlayEntry = null;
+    });
   }
 }
 

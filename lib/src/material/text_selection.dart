@@ -15,7 +15,7 @@ class _MaterialTextSelectionControls extends SelectionControls {
 
   /// Shows the context menu as an overlay.
   void _showOverlay(BuildContext context, Offset position, Widget menu) {
-    _removeOverlay(); // Remove any existing overlay before showing a new one.
+    _hideOverlay(); // Remove any existing overlay before showing a new one.
 
     _overlayEntry = OverlayEntry(
       builder: (context) {
@@ -30,13 +30,17 @@ class _MaterialTextSelectionControls extends SelectionControls {
       },
     );
 
-    Overlay.of(context).insert(_overlayEntry!);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Overlay.of(context).insert(_overlayEntry!);
+    });
   }
 
   /// Hides the context menu overlay.
-  void _removeOverlay() {
-    _overlayEntry?.remove();
-    _overlayEntry = null;
+  void _hideOverlay() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _overlayEntry?.remove();
+      _overlayEntry = null;
+    });
   }
 
   @override
