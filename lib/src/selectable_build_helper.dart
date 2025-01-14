@@ -91,7 +91,7 @@ class SelectableBuildHelper {
       bool useExperimentalPopupMenu,
       ) {
     if (selection == null || !selection.isTextSelected) {
-      _removePopupMenu();
+      removePopupMenu();
       return [];
     }
 
@@ -165,7 +165,7 @@ class SelectableBuildHelper {
   void _showPopupMenu(BuildContext context, List<Rect> selectionRects,
       SelectionDelegate delegate, BoxConstraints constraints,
       double topOverlayHeight, bool useExperimentalPopupMenu) {
-    _removePopupMenu(); // Remove any existing overlay entry.
+    removePopupMenu(); // Remove any existing overlay entry.
 
     final viewport = Rect.fromLTWH(
         0, 0, constraints.maxWidth, constraints.maxHeight);
@@ -177,7 +177,7 @@ class SelectableBuildHelper {
     Overlay.of(context).insert(_popupMenuOverlayEntry!);
   }
 
-  void _removePopupMenu() {
+  void removePopupMenu() {
     _popupMenuOverlayEntry?.remove();
     _popupMenuOverlayEntry = null;
   }
