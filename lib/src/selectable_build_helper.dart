@@ -166,25 +166,25 @@ class SelectableBuildHelper {
           child: controls!.buildHandle(context, endHandleType, endLineHeight),
         ),
       ),
-      // AnimatedOpacity(
-      //   opacity: isShowingPopupMenu ? 1.0 : 0.0,
-      //   duration: const Duration(milliseconds: 200),
-      //   child: IgnorePointer(
-      //     // Ignore gestures (e.g. taps) on the popup menu if it's not showing.
-      //     ignoring: !isShowingPopupMenu,
-      //     child: _PopupMenu(
-      //       constraints: constraints,
-      //       controls: controls!,
-      //       mainKey: mainKey,
-      //       scrollController: scrollController,
-      //       selectionDelegate: selectionDelegate,
-      //       selectionRects: selection.rects!,
-      //       topOverlayHeight: topOverlayHeight,
-      //       isShowing: isShowingPopupMenu,
-      //       useExperimentalPopupMenu: useExperimentalPopupMenu,
-      //     ),
-      //   ),
-      // ),
+      AnimatedOpacity(
+        opacity: isShowingPopupMenu ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 200),
+        child: IgnorePointer(
+          // Ignore gestures (e.g. taps) on the popup menu if it's not showing.
+          ignoring: !isShowingPopupMenu,
+          child: _PopupMenu(
+            constraints: constraints,
+            controls: controls!,
+            mainKey: mainKey,
+            scrollController: scrollController,
+            selectionDelegate: selectionDelegate,
+            selectionRects: selection.rects!,
+            topOverlayHeight: topOverlayHeight,
+            isShowing: isShowingPopupMenu,
+            useExperimentalPopupMenu: useExperimentalPopupMenu,
+          ),
+        ),
+      ),
     ];
   }
 }

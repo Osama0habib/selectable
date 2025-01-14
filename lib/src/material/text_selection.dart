@@ -174,21 +174,78 @@ class _TextSelectionHandlePainter extends CustomPainter {
 }
 
 class _MaterialTextSelectionControls extends SelectionControls {
-  /// Returns the size of the Material handle.
+  OverlayEntry? _toolbarOverlayEntry;
+
   @override
   Size getHandleSize(double textLineHeight) =>
       const Size(_kHandleSize, _kHandleSize);
 
-  /// Builder for material-style copy/paste text selection popup menu.
+  /// Shows the popup menu as an overlay entry.
+  void _showOverlay(BuildContext context, Offset anchor, SelectionDelegate delegate) {
+    _removeOverlay(); // Remove any existing overlay
+
+    _toolbarOverlayEntry = OverlayEntry(
+      builder: (context) {
+        return Positioned(
+          left: anchor.dx,
+          top: anchor.dy,
+          child: Material(
+            elevation: 4.0,
+            color: Theme.of(context).canvasColor,
+            borderRadius: BorderRadius.circular(8),
+            child: Theme(
+              data: ThemeData(buttonTheme: ButtonThemeData(minWidth: 0)),
+              child: Container(
+                height: _kPopupMenuHeight,
+                padding: EdgeInsets.symmetric(horizontal: _kButtonPadding),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: _buildPopupMenuItems(delegate, context),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    Overlay.of(context).insert(_toolbarOverlayEntry!);
+  }
+
+  /// Removes the popup menu overlay.
+  void _removeOverlay() {
+    _toolbarOverlayEntry?.remove();
+    _toolbarOverlayEntry = null;
+  }
+
+  /// Builds the popup menu items based on the provided `SelectionDelegate`.
+  List<Widget> _buildPopupMenuItems(SelectionDelegate delegate, BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final items = delegate.menuItems
+        .expand<Widget>((e) => e.isEnabled!(delegate.controller)
+        ? [
+      _Button(
+        icon: e.icon,
+        title: e.title ?? '',
+        isDarkMode: isDarkMode,
+        onPressed: () => e.handler!(delegate.controller),
+      )
+    ]
+        : [])
+        .toList();
+
+    return items.isEmpty ? [SizedBox.shrink()] : items;
+  }
+
   @override
   Widget buildPopupMenu(
-    BuildContext context,
-    Rect viewport,
-    List<Rect>? selectionRects,
-    SelectionDelegate delegate,
-    double topOverlayHeight,
-    bool useExperimentalPopupMenu,
-  ) {
+      BuildContext context,
+      Rect viewport,
+      List<Rect>? selectionRects,
+      SelectionDelegate delegate,
+      double topOverlayHeight,
+      bool useExperimentalPopupMenu,
+      ) {
     assert(debugCheckHasMediaQuery(context));
     assert(debugCheckHasMaterialLocalizations(context));
 
@@ -202,7 +259,6 @@ class _MaterialTextSelectionControls extends SelectionControls {
 
     double? secondaryY;
 
-    // Will fit below?
     if (viewport.bottom - selectionRects.last.bottom >=
         _kHandleSize + _kPopupMenuHeight + _kPopupMenuContentDistance) {
       secondaryY = math.max(
@@ -211,24 +267,12 @@ class _MaterialTextSelectionControls extends SelectionControls {
               _kHandleSize +
               _kPopupMenuHeight +
               _kPopupMenuContentDistance);
-    }
-
-    // Show in center.
-    else {
+    } else {
       secondaryY = viewport.center.dy;
     }
 
     final arrowTipX =
         (selectionRects.last.left + selectionRects.first.right) / 2.0;
-
-    if (useExperimentalPopupMenu) {
-      // print('building menu at $arrowTipX, $localBarTopY');
-      return delegate.buildMenu(
-        context,
-        primaryAnchor: Offset(arrowTipX, primaryY + topOverlayHeight - 70),
-        secondaryAnchor: Offset(arrowTipX, secondaryY),
-      );
-    }
 
     var localBarTopY = 0.0;
     if (selectionRects.first.top - viewport.top >= popupMenuHeightNeeded) {
@@ -239,16 +283,13 @@ class _MaterialTextSelectionControls extends SelectionControls {
 
     final Offset preciseMidpoint = Offset(arrowTipX, localBarTopY);
 
-    return CustomSingleChildLayout(
-      delegate: _TextSelectionPopupMenuLayout(
-        viewport.width,
-        preciseMidpoint,
-      ),
-      child: _TextSelectionPopupMenu(delegate: delegate),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showOverlay(context, preciseMidpoint, delegate);
+    });
+
+    return SizedBox.shrink(); // Return an empty widget since we're using an overlay
   }
 
-  /// Builder for material-style text selection handles.
   @override
   Widget buildHandle(
       BuildContext context, TextSelectionHandleType type, double textHeight) {
@@ -266,9 +307,6 @@ class _MaterialTextSelectionControls extends SelectionControls {
       ),
     );
 
-    // [handle] is a circle, with a rectangle in the top left quadrant of that
-    // circle (an onion pointing to 10:30). We rotate [handle] to point
-    // straight up or up-right depending on the handle type.
     switch (type) {
       case TextSelectionHandleType.left: // points up-right
         return Transform.rotate(
@@ -285,9 +323,6 @@ class _MaterialTextSelectionControls extends SelectionControls {
     }
   }
 
-  /// Gets anchor for material-style text selection handles.
-  ///
-  /// See [SelectionControls.getHandleAnchor].
   @override
   Offset getHandleAnchor(TextSelectionHandleType type, double textLineHeight) {
     switch (type) {
@@ -300,3 +335,4 @@ class _MaterialTextSelectionControls extends SelectionControls {
     }
   }
 }
+

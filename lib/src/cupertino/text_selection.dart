@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../selectable.dart';
@@ -318,7 +319,8 @@ class _TextSelectionHandlePainter extends CustomPainter {
 }
 
 class _CupertinoTextSelectionControls extends SelectionControls {
-  /// Returns the size of the Cupertino handle.
+  OverlayEntry? _toolbarOverlayEntry;
+
   @override
   Size getHandleSize(double textLineHeight) {
     return Size(
@@ -327,21 +329,57 @@ class _CupertinoTextSelectionControls extends SelectionControls {
     );
   }
 
+  /// Shows the popup menu as an overlay entry.
+  void _showOverlay(
+      BuildContext context,
+      Offset anchor,
+      List<Widget> items,
+      bool isArrowPointingDown,
+      ) {
+    _removeOverlay(); // Remove any existing overlay.
+
+    _toolbarOverlayEntry = OverlayEntry(
+      builder: (context) {
+        return Positioned(
+          left: anchor.dx,
+          top: isArrowPointingDown ? anchor.dy : anchor.dy - _kPopupMenuHeight,
+          child: Material(
+            color: Colors.transparent,
+            child: _CupertinoTextSelectionPopupMenu._(
+              barTopY: anchor.dy,
+              arrowTipX: anchor.dx,
+              isArrowPointingDown: isArrowPointingDown,
+              child: DecoratedBox(
+                decoration: const BoxDecoration(color: _kPopupMenuDividerColor),
+                child: Row(mainAxisSize: MainAxisSize.min, children: items),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    Overlay.of(context)?.insert(_toolbarOverlayEntry!);
+  }
+
+  /// Removes the popup menu overlay.
+  void _removeOverlay() {
+    _toolbarOverlayEntry?.remove();
+    _toolbarOverlayEntry = null;
+  }
+
   /// Builder for iOS-style copy/paste text selection popup menu.
   @override
   Widget buildPopupMenu(
-    BuildContext context,
-    Rect viewport,
-    List<Rect>? selectionRects,
-    SelectionDelegate delegate,
-    double topOverlayHeight,
-    bool useExperimentalPopupMenu,
-  ) {
+      BuildContext context,
+      Rect viewport,
+      List<Rect>? selectionRects,
+      SelectionDelegate delegate,
+      double topOverlayHeight,
+      bool useExperimentalPopupMenu,
+      ) {
     assert(debugCheckHasMediaQuery(context));
     final padding = MediaQuery.paddingOf(context);
-
-    // TextSelectionPoint(rects.first.bottomLeft, TextDirection.ltr),
-    // TextSelectionPoint(rects.last.bottomRight, TextDirection.ltr)
 
     final double popupMenuHeightNeeded = padding.top +
         _kPopupMenuScreenPadding +
@@ -370,19 +408,10 @@ class _CupertinoTextSelectionControls extends SelectionControls {
     }
 
     final double arrowTipX =
-        ((selectionRects.last.left + selectionRects.first.right) / 2.0).clamp(
+    ((selectionRects.last.left + selectionRects.first.right) / 2.0).clamp(
       _kArrowScreenPadding + padding.left,
       MediaQuery.sizeOf(context).width - padding.right - _kArrowScreenPadding,
     );
-
-    if (useExperimentalPopupMenu) {
-      // print('building menu at $arrowTipX, $localBarTopY');
-      return delegate.buildMenu(
-        context,
-        primaryAnchor: Offset(arrowTipX, primaryY + topOverlayHeight - 40),
-        secondaryAnchor: Offset(arrowTipX, secondaryY),
-      );
-    }
 
     var isArrowPointingDown = true;
     var localBarTopY = 0.0;
@@ -392,7 +421,7 @@ class _CupertinoTextSelectionControls extends SelectionControls {
       localBarTopY = primaryY;
     } else
 
-    // Will fit below?
+      // Will fit below?
     if (viewport.bottom - selectionRects.last.bottom >= popupMenuHeightNeeded) {
       localBarTopY = secondaryY;
       isArrowPointingDown = false;
@@ -405,34 +434,29 @@ class _CupertinoTextSelectionControls extends SelectionControls {
 
     final List<Widget> items = <Widget>[];
     final Widget onePhysicalPixelVerticalDivider =
-        SizedBox(width: 1.0 / MediaQuery.devicePixelRatioOf(context));
+    SizedBox(width: 1.0 / MediaQuery.devicePixelRatioOf(context));
     final EdgeInsets arrowPadding = isArrowPointingDown
         ? EdgeInsets.only(bottom: _kPopupMenuArrowSize.height)
         : EdgeInsets.only(top: _kPopupMenuArrowSize.height);
 
-    // dmPrint('_CupertinoTextSelectionControls.buildPopupMenu');
-
     void addPopupMenuButtonIfNeeded(
-      IconData? icon,
-      String text,
-      bool Function(SelectableController?) predicate,
-      bool Function(SelectableController?)? onPressed,
-    ) {
-      if (!predicate(delegate.controller)) {
-        // dmPrint('NOT showing $text menu because isEnabled returned `false`');
-        return;
-      }
+        IconData? icon,
+        String text,
+        bool Function(SelectableController?) predicate,
+        bool Function(SelectableController?)? onPressed,
+        ) {
+      if (!predicate(delegate.controller)) return;
 
       if (items.isNotEmpty) {
         items.add(onePhysicalPixelVerticalDivider);
       }
 
       Widget textWidget() => MediaQuery.withNoTextScaling(
-            child: Text(
-              icon == null ? text : ' $text',
-              style: _kPopupMenuButtonFontStyle,
-            ),
-          );
+        child: Text(
+          icon == null ? text : ' $text',
+          style: _kPopupMenuButtonFontStyle,
+        ),
+      );
 
       items.add(CupertinoButton(
         color: _kPopupMenuBackgroundColor,
@@ -444,16 +468,16 @@ class _CupertinoTextSelectionControls extends SelectionControls {
         child: icon == null
             ? textWidget()
             : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    icon,
-                    size: 18.0,
-                    color: const Color(0xffffffff),
-                  ),
-                  textWidget(),
-                ],
-              ),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 18.0,
+              color: const Color(0xffffffff),
+            ),
+            textWidget(),
+          ],
+        ),
       ));
     }
 
@@ -462,25 +486,22 @@ class _CupertinoTextSelectionControls extends SelectionControls {
           item.icon, item.title ?? '', item.isEnabled!, item.handler);
     }
 
-    return _CupertinoTextSelectionPopupMenu._(
-      barTopY: localBarTopY,
-      arrowTipX: arrowTipX,
-      isArrowPointingDown: isArrowPointingDown,
-      child: items.isEmpty
-          ? null
-          : DecoratedBox(
-              decoration: const BoxDecoration(color: _kPopupMenuDividerColor),
-              child: Row(mainAxisSize: MainAxisSize.min, children: items),
-            ),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showOverlay(
+        context,
+        Offset(arrowTipX, localBarTopY + topOverlayHeight),
+        items,
+        isArrowPointingDown,
+      );
+    });
+
+    return const SizedBox.shrink(); // Return empty widget as we use an overlay.
   }
 
-  /// Builder for iOS text selection edges.
+  /// Builder for iOS text selection handles.
   @override
   Widget buildHandle(BuildContext context, TextSelectionHandleType type,
       double textLineHeight) {
-    // We want a size that's a vertical line the height of the text plus a 18.0
-    // padding in every direction that will constitute the selection drag area.
     final Size desiredSize = getHandleSize(textLineHeight);
 
     final Widget handle = SizedBox.fromSize(
@@ -491,14 +512,10 @@ class _CupertinoTextSelectionControls extends SelectionControls {
       ),
     );
 
-    // [buildHandle]'s widget is positioned at the selection cursor's bottom
-    // baseline. We transform the handle such that the SizedBox is superimposed
-    // on top of the text selection endpoints.
     switch (type) {
       case TextSelectionHandleType.left:
         return handle;
       case TextSelectionHandleType.right:
-        // Right handle is a vertical mirror of the left.
         return Transform(
           transform: Matrix4.identity()
             ..translate(desiredSize.width / 2, desiredSize.height / 2)
@@ -506,28 +523,20 @@ class _CupertinoTextSelectionControls extends SelectionControls {
             ..translate(-desiredSize.width / 2, -desiredSize.height / 2),
           child: handle,
         );
-      // iOS doesn't draw anything for collapsed selections.
       case TextSelectionHandleType.collapsed:
         return const SizedBox();
     }
   }
 
-  /// Gets anchor for cupertino-style text selection handles.
-  ///
-  /// See [SelectionControls.getHandleAnchor].
   @override
   Offset getHandleAnchor(TextSelectionHandleType type, double textLineHeight) {
     final Size handleSize = getHandleSize(textLineHeight);
     switch (type) {
-      // The circle is at the top for the left handle, and the anchor point is
-      // all the way at the bottom of the line.
       case TextSelectionHandleType.left:
         return Offset(
           handleSize.width / 2,
           handleSize.height,
         );
-      // The right handle is vertically flipped, and the anchor point is near
-      // the top of the circle to give slight overlap.
       case TextSelectionHandleType.right:
         return Offset(
           handleSize.width / 2,
@@ -535,7 +544,6 @@ class _CupertinoTextSelectionControls extends SelectionControls {
               2 * _kSelectionHandleRadius +
               _kSelectionHandleOverlap,
         );
-      // A collapsed handle anchors itself so that it's centered.
       default:
         return Offset(
           handleSize.width / 2,
@@ -544,3 +552,4 @@ class _CupertinoTextSelectionControls extends SelectionControls {
     }
   }
 }
+

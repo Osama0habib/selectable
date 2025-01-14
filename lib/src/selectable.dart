@@ -133,6 +133,7 @@ class _SelectableState extends State<Selectable>
     }
   }
 
+
   @override
   void dispose() {
     _selectionOpacityController.dispose();
