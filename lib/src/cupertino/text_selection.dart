@@ -128,22 +128,16 @@ class _PopupMenuRenderBox extends RenderShiftedBox {
 
   double? _barTopY;
   set barTopY(double? value) {
-    if (_barTopY == value) {
-      return;
-    }
-    _barTopY = value;
+    if (_barTopY == value) return;
+    _barTopY = value ?? 0; // Default to 0 if null.
     markNeedsLayout();
-    markNeedsSemanticsUpdate();
   }
 
   double? _arrowTipX;
   set arrowTipX(double? value) {
-    if (_arrowTipX == value) {
-      return;
-    }
-    _arrowTipX = value;
+    if (_arrowTipX == value) return;
+    _arrowTipX = value ?? 0; // Default to 0 if null.
     markNeedsLayout();
-    markNeedsSemanticsUpdate();
   }
 
   bool? _isArrowPointingDown;
@@ -162,39 +156,47 @@ class _PopupMenuRenderBox extends RenderShiftedBox {
   @override
   void setupParentData(RenderObject child) {
     if (child.parentData is! _PopupMenuParentData) {
-      child.parentData = _PopupMenuParentData();
+      child.parentData = _PopupMenuParentData()
+        ..arrowXOffsetFromCenter = 0.0; // Initialize default value.
     }
   }
 
   @override
   void performLayout() {
-    size = constraints.biggest;
+    size = constraints.biggest; // Ensure the size of this RenderBox.
 
     if (child == null) {
       return;
     }
+
+    // Enforce constraints for the child.
     final BoxConstraints enforcedConstraint = constraints
-        .deflate(
-        const EdgeInsets.symmetric(horizontal: _kPopupMenuScreenPadding))
+        .deflate(const EdgeInsets.symmetric(horizontal: _kPopupMenuScreenPadding))
         .loosen();
 
+    // Layout the child with enforced constraints.
     child!.layout(
       heightConstraint.enforce(enforcedConstraint),
       parentUsesSize: true,
     );
+
     final _PopupMenuParentData childParentData =
     (child!.parentData as _PopupMenuParentData?)!;
 
-    // The local x-coordinate of the center of the popup menu.
+    // Calculate the local x-coordinate of the center of the popup menu.
     final double lowerBound = child!.size.width / 2 + _kPopupMenuScreenPadding;
     final double upperBound =
         size.width - child!.size.width / 2 - _kPopupMenuScreenPadding;
-    final double adjustedCenterX = _arrowTipX!.clamp(lowerBound, upperBound);
+    final double adjustedCenterX = _arrowTipX?.clamp(lowerBound, upperBound) ?? 0;
 
+    // Assign calculated values to parent data.
     childParentData.offset =
-        Offset(adjustedCenterX - child!.size.width / 2, _barTopY!);
-    childParentData.arrowXOffsetFromCenter = _arrowTipX! - adjustedCenterX;
+        Offset(adjustedCenterX - child!.size.width / 2, _barTopY ?? 0);
+    childParentData.arrowXOffsetFromCenter = _arrowTipX != null
+        ? _arrowTipX! - adjustedCenterX
+        : 0.0; // Default to 0.0 if _arrowTipX is null.
   }
+
 
 
   // The path is described in the popup menu's coordinate system.
