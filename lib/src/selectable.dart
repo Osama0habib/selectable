@@ -365,7 +365,7 @@ class _SelectableState extends State<Selectable>
                     duration:
                         (_selections.main?.animationDuration ?? Duration.zero),
                     child: Stack(
-                      clipBehavior: Clip.none,
+                      clipBehavior: Clip.antiAliasWithSaveLayer,
                       fit: StackFit.loose,
                       children: [
                         // if (_selections.main.rects?.isNotEmpty ?? false)
