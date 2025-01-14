@@ -1,3 +1,7 @@
+// Copyright (c) 2021 Ron Booth. All rights reserved.
+// Use of this source code is governed by a license that can be found in the
+// LICENSE file.
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -17,17 +21,15 @@ class SelectableBuildHelper {
   bool showPopupMenu = false;
   bool isScrolling = false;
 
-  bool showParagraphRects = false; // kDebugMode;
-
-  OverlayEntry? _popupMenuOverlayEntry;
+  bool showParagraphRects = false; //kDebugMode;
 
   void maybeAutoscroll(
-      ScrollController? scrollController,
-      GlobalKey globalKey,
-      Offset? selectionPt,
-      double maxY,
-      double topOverlayHeight,
-      ) {
+    ScrollController? scrollController,
+    GlobalKey globalKey,
+    Offset? selectionPt,
+    double maxY,
+    double topOverlayHeight,
+  ) {
     if (scrollController?.hasOneClient ?? false) {
       _autoscroll(
           scrollController, globalKey, selectionPt, maxY, topOverlayHeight);
@@ -81,24 +83,26 @@ class SelectableBuildHelper {
 
   /// Builds the selection handles and optionally the popup menu.
   List<Widget> buildSelectionControls(
-      Selection? selection,
-      BuildContext context,
-      BoxConstraints constraints,
-      SelectionDelegate selectionDelegate,
-      GlobalKey mainKey,
-      ScrollController? scrollController,
-      double topOverlayHeight,
-      bool useExperimentalPopupMenu,
-      ) {
-    if (selection == null || !selection.isTextSelected) {
-      removePopupMenu();
-      return [];
-    }
+    Selection? selection,
+    BuildContext context,
+    BoxConstraints constraints,
+    SelectionDelegate selectionDelegate,
+    GlobalKey mainKey,
+    ScrollController? scrollController,
+    double topOverlayHeight,
+    // This is okay.
+    // ignore: avoid_positional_boolean_parameters
+    bool useExperimentalPopupMenu,
+  ) {
+    // If there is no selection, return an empty list.
+    if (selection == null || !selection.isTextSelected) return []; //------->
 
     final startLineHeight = selection.rects!.first.height;
     final endLineHeight = selection.rects!.last.height;
 
     final isRtl = Directionality.maybeOf(context) == TextDirection.rtl;
+    // final r = selection.rects!;
+    // print('\n${r.map((r) => '(l${r.left.s}, t${r.top.s})').join('\n')}\n');
 
     final startHandleType = isRtl && !usingCupertinoControls
         ? TextSelectionHandleType.right
@@ -108,15 +112,19 @@ class SelectableBuildHelper {
         : TextSelectionHandleType.right;
 
     final startOffset =
-    controls!.getHandleAnchor(startHandleType, startLineHeight);
+        controls!.getHandleAnchor(startHandleType, startLineHeight);
     final endOffset = controls!.getHandleAnchor(endHandleType, endLineHeight);
 
     final startHandlePt = isRtl
         ? selection.rects!.first.bottomRight
         : selection.rects!.first.bottomLeft;
-    final endHandlePt = isRtl
-        ? selection.rects!.last.bottomLeft
-        : selection.rects!.last.bottomRight;
+    final endHandlePt = (usingCupertinoControls
+        ? (isRtl
+            ? selection.rects!.last.topLeft
+            : selection.rects!.last.topRight)
+        : (isRtl
+            ? selection.rects!.last.bottomLeft
+            : selection.rects!.last.bottomRight));
 
     final startPt = Offset(
         startHandlePt.dx - startOffset.dx, startHandlePt.dy - startOffset.dy);
@@ -126,18 +134,17 @@ class SelectableBuildHelper {
     final endSize = controls!.getHandleSize(endLineHeight);
 
     final startRect =
-    Rect.fromLTWH(startPt.dx, startPt.dy, startSize.width, startSize.height)
-        .inflate(20);
+        Rect.fromLTWH(startPt.dx, startPt.dy, startSize.width, startSize.height)
+            .inflate(20);
     final endRect =
-    Rect.fromLTWH(endPt.dx, endPt.dy, endSize.width, endSize.height)
-        .inflate(20);
+        Rect.fromLTWH(endPt.dx, endPt.dy, endSize.width, endSize.height)
+            .inflate(20);
 
     final isShowingPopupMenu = (showPopupMenu && !isScrolling);
-
-    if (isShowingPopupMenu) {
-      _showPopupMenu(context, selection.rects!, selectionDelegate, constraints,
-          topOverlayHeight, useExperimentalPopupMenu);
-    }
+    // dmPrint('SelectionUpdater.buildSelectionControls isShowingPopupMenu ==
+    // $isShowingPopupMenu');
+    // dmPrint('buildSelectionControls, showPopupMenu = $showPopupMenu,
+    // isScrolling = $isScrolling');
 
     return [
       Positioned.fromRect(
@@ -147,7 +154,7 @@ class SelectableBuildHelper {
           handleType: SelectionHandleType.left,
           mainKey: mainKey,
           child:
-          controls!.buildHandle(context, startHandleType, startLineHeight),
+              controls!.buildHandle(context, startHandleType, startLineHeight),
         ),
       ),
       Positioned.fromRect(
@@ -159,31 +166,131 @@ class SelectableBuildHelper {
           child: controls!.buildHandle(context, endHandleType, endLineHeight),
         ),
       ),
+      AnimatedOpacity(
+        opacity: isShowingPopupMenu ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 200),
+        child: IgnorePointer(
+          // Ignore gestures (e.g. taps) on the popup menu if it's not showing.
+          ignoring: !isShowingPopupMenu,
+          child: _PopupMenu(
+            constraints: constraints,
+            controls: controls!,
+            mainKey: mainKey,
+            scrollController: scrollController,
+            selectionDelegate: selectionDelegate,
+            selectionRects: selection.rects!,
+            topOverlayHeight: topOverlayHeight,
+            isShowing: isShowingPopupMenu,
+            useExperimentalPopupMenu: useExperimentalPopupMenu,
+          ),
+        ),
+      ),
     ];
   }
+}
 
-  void _showPopupMenu(BuildContext context, List<Rect> selectionRects,
-      SelectionDelegate delegate, BoxConstraints constraints,
-      double topOverlayHeight, bool useExperimentalPopupMenu) {
-    removePopupMenu(); // Remove any existing overlay entry.
+// extension on double {
+//   String get s => toStringAsFixed(0).padLeft(4, ' ');
+// }
 
-    final viewport = Rect.fromLTWH(
-        0, 0, constraints.maxWidth, constraints.maxHeight);
+class _PopupMenu extends StatefulWidget {
+  const _PopupMenu({
+    required this.constraints,
+    required this.controls,
+    required this.mainKey,
+    required this.scrollController,
+    required this.selectionDelegate,
+    required this.selectionRects,
+    required this.topOverlayHeight,
+    required this.isShowing,
+    required this.useExperimentalPopupMenu,
+  });
 
-    final menu = controls!.buildPopupMenu(
-        context, viewport, selectionRects, delegate, topOverlayHeight, false);
+  final BoxConstraints constraints;
+  final SelectionControls controls;
+  final GlobalKey mainKey;
+  final ScrollController? scrollController;
+  final SelectionDelegate selectionDelegate;
+  final List<Rect> selectionRects;
+  final double topOverlayHeight;
+  final bool isShowing;
+  final bool useExperimentalPopupMenu;
 
-    _popupMenuOverlayEntry = OverlayEntry(builder: (context) => menu);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Overlay.of(context).insert(_popupMenuOverlayEntry!);
-    });
+  @override
+  _PopupMenuState createState() => _PopupMenuState();
+}
+
+class _PopupMenuState extends State<_PopupMenu> {
+  @override
+  void didUpdateWidget(covariant _PopupMenu old) {
+    super.didUpdateWidget(old);
+
+    // Only rebuild the menu if it is showing.
+    if (widget.isShowing) {
+      // dmPrint('Selectable popup menu rebuild triggered by didUpdateWidget');
+      _menu = null;
+    }
   }
 
-  void removePopupMenu() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _popupMenuOverlayEntry?.remove();
-      _popupMenuOverlayEntry = null;
-    });
+  Widget? _menu;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_menu == null) {
+      // dmPrint('rebuilding menu...');
+
+      // [viewport] is the rectangle that can be seen, in render object
+      // coordinates, which defaults to the render object rect.
+      Rect? viewport = Rect.fromLTWH(
+          0, 0, widget.constraints.maxWidth, widget.constraints.maxHeight);
+
+      // If there is a scroll controller, update the viewport to the visible
+      // rect in render object coordinates.
+      if (widget.scrollController?.hasOneClient ?? false) {
+        final renderObject = widget.mainKey.currentContext!.findRenderObject();
+        final vp = RenderAbstractViewport.maybeOf(renderObject);
+        assert(vp != null);
+        if (vp != null) {
+          try {
+            final renderObjScrollPos =
+                renderObject!.getTransformTo(vp).getTranslation().y;
+            final scrollOffset = -renderObjScrollPos + widget.topOverlayHeight;
+            final viewportExtent =
+                widget.scrollController!.position.viewportDimension -
+                    widget.topOverlayHeight;
+            viewport =
+                Rect.fromLTWH(0, scrollOffset, viewport.width, viewportExtent)
+                    .intersect(viewport);
+            if (viewport.height < 50) viewport = null;
+          } catch (e) {
+            dmPrint('Selectable popup menu build error: $e');
+          }
+        }
+        // } else {
+        //   if (widget.scrollController == null) {
+        //     dmPrint('scrollController == null');
+        //   } else {
+        //     dmPrint('scrollController.clientCount: '
+        //         '${widget.scrollController!.clientCount}');
+        //   }
+      }
+
+      if (viewport != null) {
+        // dmPrint('buildPopupMenu with viewport $viewport, '
+        //     'topOverlayHeight: ${widget.topOverlayHeight}');
+        _menu = widget.controls.buildPopupMenu(
+            context,
+            viewport,
+            widget.selectionRects,
+            widget.selectionDelegate,
+            widget.topOverlayHeight,
+            widget.useExperimentalPopupMenu);
+      } else {
+        _menu = const SizedBox();
+      }
+    }
+
+    return _menu!;
   }
 }
 
@@ -216,10 +323,12 @@ class _SelectionHandle extends StatelessWidget {
   }
 
   void _onPanEnd(DragEndDetails details) {
+    // dmPrint('onPanEnd');
     delegate.onDragSelectionHandleEnd(handleType);
   }
 
   void _onPanCancel() {
+    // dmPrint('onPanCancel');
     delegate.onDragSelectionHandleEnd(handleType);
   }
 
@@ -234,6 +343,7 @@ class _SelectionHandle extends StatelessWidget {
       behavior: HitTestBehavior.translucent,
       child: Container(
         padding: const EdgeInsets.all(20),
+        //color: Colors.orange.withAlpha(50),
         child: child,
       ),
     );

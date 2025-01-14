@@ -133,7 +133,6 @@ class _SelectableState extends State<Selectable>
     }
   }
 
-
   @override
   void dispose() {
     _selectionOpacityController.dispose();
@@ -144,11 +143,7 @@ class _SelectableState extends State<Selectable>
 
     _removeListenerFromScrollController();
 
-    // Remove any active overlay entry.
-    _buildHelper.removePopupMenu();
-
     super.dispose();
-
   }
 
   void _refresh([VoidCallback? fn]) => !mounted
@@ -249,17 +244,16 @@ class _SelectableState extends State<Selectable>
   Widget build(BuildContext context) {
     _isBuilding = true;
 
-    // Update selection controller and scroll controller state.
+    // Add post-frame-callback?
     if (_selectionController != null ||
         _hasChangedScrollController(widget.scrollController)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
         _updateSelectionControllerWithNewSelections();
         _checkForUpdatedScrollController(widget.scrollController);
       });
     }
 
-    // Determine the selection controls.
-    if (_buildHelper.controls == null) {
+    if (kDebugMode || _buildHelper.controls == null) {
       _buildHelper
         ..usingCupertinoControls = _useCupertinoSelectionControls(context)
         ..controls = _buildHelper.usingCupertinoControls
@@ -267,12 +261,24 @@ class _SelectableState extends State<Selectable>
             : exMaterialTextSelectionControls;
     }
 
-    // Build the child widget stack.
+    // Ignore taps if text is not selected, because the child might want to
+    // handle them.
+    final ignoreTap = !(widget.showSelectionControls &&
+        (_selections.main?.isTextSelected ?? false));
+
+    // This is how the selection color is set in the Flutter 2.5.2
+    // version of src/material/selectable_text.dart, except that
+    // it uses opacity of 0.40, which I think looks too dark.
+    const opacity = 0.25;
+    final selectionColor = widget.selectionColor ??
+        TextSelectionTheme.of(context).selectionColor ??
+        (_buildHelper.usingCupertinoControls
+            ? CupertinoTheme.of(context).primaryColor.withOpacity(opacity)
+            : Theme.of(context).colorScheme.primary.withOpacity(opacity));
+
     final result = Stack(
-      clipBehavior: Clip.none,
-      fit: StackFit.loose,
       key: _globalKey,
-      children: [
+      children: <Widget>[
         GestureDetector(
           behavior: HitTestBehavior.translucent,
           onLongPressStart: widget.selectWordOnLongPress
@@ -281,60 +287,122 @@ class _SelectableState extends State<Selectable>
           onLongPress: widget.selectWordOnLongPress
               ? () => _onLongPressOrDoubleTap(_localTapOrLongPressPt)
               : null,
-          onTapDown: (details) =>
-          _localTapOrLongPressPt = details.localPosition,
-          onTap: () => _onTap(_localTapOrLongPressPt),
+          onTapDown: ignoreTap
+              ? null
+              : (details) => _localTapOrLongPressPt = details.localPosition,
+          onTap: ignoreTap ? null : () => _onTap(_localTapOrLongPressPt),
+          onDoubleTapDown: widget.selectWordOnDoubleTap
+              ? (details) => _localTapOrLongPressPt = details.localPosition
+              : null,
+          onDoubleTap: widget.selectWordOnDoubleTap
+              ? () => _onLongPressOrDoubleTap(_localTapOrLongPressPt)
+              : null,
           child: SelectableRenderWidget(
             paragraphs: _selections.cachedParagraphs,
             selections: _selections,
             foregroundPainter: widget.showSelection
                 ? _selectionController?.getCustomPainter() ??
-                DefaultSelectionPainter(
-                  color: widget.selectionColor ?? Theme.of(context).colorScheme.primary.withOpacity(0.25),
-                  opacityAnimation: _selectionOpacityController,
-                )
+                    DefaultSelectionPainter(
+                      color: selectionColor,
+                      opacityAnimation: _selectionIsHidden ==
+                              (_selections.main?.isHidden ?? false)
+                          ? _selectionOpacityController
+                          : (_selections.main?.isHidden ?? false)
+                              ? kAlwaysDismissedAnimation
+                              : kAlwaysCompleteAnimation,
+                    )
                 : null,
             child: IgnorePointer(
               ignoring: false,
+              // Ignore gestures (e.g. taps) on the child if text is selected.
+              // ignoring: widget.showSelectionControls &&
+              //     (_selections.dragInfo.isSelectingWordOrDraggingHandle ||
+              //         (_selections.main?.isTextSelected ?? false)),
               child: widget.child,
             ),
           ),
         ),
         if (widget.showSelection &&
             (_selections.dragInfo.isSelectingWordOrDraggingHandle ||
-                (_selections.main?.isTextSelected ?? false)))
+                (_selections.main?.isTextSelected ?? false) ||
+                _buildHelper.showParagraphRects))
           Positioned.fill(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                if (_selections.main?.isTextSelected ?? false) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _buildHelper.maybeAutoscroll(
-                      widget.scrollController,
-                      _globalKey,
-                      _selections.dragInfo.selectionPt,
-                      _selections.cachedParagraphs.list.last.rect.bottom,
-                      widget.topOverlayHeight,
-                    );
-                  });
+                // If text is selected, and a handle is being dragged,
+                // autoscroll if necessary.
+                if ((_selections.main?.isTextSelected ?? false) &&
+                    _selections.dragInfo.isDraggingHandle) {
+                  final paragraphs = _selections.cachedParagraphs.list;
+                  assert(paragraphs.isNotEmpty);
+                  if (paragraphs.isNotEmpty) {
+                    final selectionPt = _selections.dragInfo.selectionPt;
+                    final maxY = paragraphs.last.rect.bottom;
+                    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+                      _buildHelper.maybeAutoscroll(
+                        widget.scrollController,
+                        _globalKey,
+                        selectionPt,
+                        maxY,
+                        widget.topOverlayHeight,
+                      );
+                    });
+                  }
                 }
 
-                return Stack(
-                  clipBehavior: Clip.none,
-                  fit: StackFit.loose,
-                  children: [
-                    if (widget.showSelectionControls)
-                      ..._buildHelper.buildSelectionControls(
-                        _selections.main,
-                        context,
-                        constraints,
-                        this,
-                        _globalKey,
-                        widget.scrollController,
-                        widget.topOverlayHeight,
-                        widget.useExperimentalPopupMenu,
-                      ),
-                  ],
-                );
+                // dmPrint('selection.update resulted in '
+                //   '${_selections.main?.rects?.length ?? 0} selection rects');
+                _selections.dragInfo
+                  ..selectionPt = null
+                  ..handleType = null;
+
+                if ((_selections.main?.rects?.isNotEmpty ?? false) ||
+                    _buildHelper.showParagraphRects) {
+                  return AnimatedOpacity(
+                    opacity: (_selections.main?.isHidden ?? false) ? 0.0 : 1.0,
+                    duration:
+                        (_selections.main?.animationDuration ?? Duration.zero),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      fit: StackFit.loose,
+                      children: [
+                        // if (_selections.main.rects?.isNotEmpty ?? false)
+                        //   ..._selections.main
+                        //       .rects!
+                        //       .map<Widget>((r) =>
+                        //         _ColoredRect(rect: r, color: selectionColor))
+                        //       .toList(),
+                        if (widget.showSelectionControls)
+                          ..._buildHelper.buildSelectionControls(
+                            _selections.main,
+                            context,
+                            constraints,
+                            this,
+                            _globalKey,
+                            widget.scrollController,
+                            widget.topOverlayHeight,
+                            widget.useExperimentalPopupMenu,
+                          ),
+                        if (_buildHelper.showParagraphRects)
+                          ..._selections.cachedParagraphs.list.map<Widget>(
+                            (p) => _ColoredRect(
+                              rect: p.rect,
+                              color: Colors.yellow.withAlpha(50),
+                              borderColor: Colors.orange,
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                } else {
+                  // dmPrint('update() returned with nothing selected');
+
+                  // IgnorePointer needs to be refreshed because
+                  // _selectionPt == null now.
+                  Future.delayed(Duration.zero, _refresh);
+
+                  return const SizedBox();
+                }
               },
             ),
           ),
@@ -344,7 +412,6 @@ class _SelectableState extends State<Selectable>
     _isBuilding = false;
     return result;
   }
-
 
   //
   // PRIVATE
@@ -473,11 +540,7 @@ class _SelectableState extends State<Selectable>
   @override
   void hidePopupMenu() {
     if (!mounted) return;
-
-    _refresh(() {
-      _buildHelper..removePopupMenu()
-      ..showPopupMenu = false;
-    });
+    _refresh(() => _buildHelper.showPopupMenu = false);
   }
 
   @override
