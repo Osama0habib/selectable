@@ -374,17 +374,17 @@ class _SelectableState extends State<Selectable>
                         //       .map<Widget>((r) =>
                         //         _ColoredRect(rect: r, color: selectionColor))
                         //       .toList(),
-                        // if (widget.showSelectionControls)
-                        //   ..._buildHelper.buildSelectionControls(
-                        //     _selections.main,
-                        //     context,
-                        //     constraints,
-                        //     this,
-                        //     _globalKey,
-                        //     widget.scrollController,
-                        //     widget.topOverlayHeight,
-                        //     widget.useExperimentalPopupMenu,
-                        //   ),
+                        if (widget.showSelectionControls)
+                          ..._buildHelper.buildSelectionControls(
+                            _selections.main,
+                            context,
+                            constraints,
+                            this,
+                            _globalKey,
+                            widget.scrollController,
+                            widget.topOverlayHeight,
+                            widget.useExperimentalPopupMenu,
+                          ),
                         if (_buildHelper.showParagraphRects)
                           ..._selections.cachedParagraphs.list.map<Widget>(
                             (p) => _ColoredRect(
