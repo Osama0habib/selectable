@@ -6,7 +6,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
@@ -25,25 +24,21 @@ class SelectableBuildHelper {
   bool showParagraphRects = false; //kDebugMode;
 
   void maybeAutoscroll(
-      ScrollController? scrollController,
-      GlobalKey globalKey,
-      Offset? selectionPt,
-      double maxY,
-      double topOverlayHeight,
-      ) {
+    ScrollController? scrollController,
+    GlobalKey globalKey,
+    Offset? selectionPt,
+    double maxY,
+    double topOverlayHeight,
+  ) {
     if (scrollController?.hasOneClient ?? false) {
       _autoscroll(
           scrollController, globalKey, selectionPt, maxY, topOverlayHeight);
     }
   }
 
-  void _autoscroll(
-      ScrollController? scrollController,
-      GlobalKey globalKey,
-      Offset? dragPt,
-      double maxY,
-      double topOverlayHeight,
-      ) {
+  /// Autoscrolls if the drag point is near the top or bottom of the viewport.
+  void _autoscroll(ScrollController? scrollController, GlobalKey globalKey,
+      Offset? dragPt, double maxY, double topOverlayHeight) {
     assert(scrollController?.hasOneClient ?? false);
 
     final renderObject = globalKey.currentContext!.findRenderObject();
@@ -78,36 +73,36 @@ class SelectableBuildHelper {
 
     if (scrollDelta != 0.0) {
       final newScrollOffset = math.min(
-        renderObjectBottom - viewportExtent + 100.0,
-        math.max(
-          -renderObjectTop,
-          scrollOffset + (scrollDelta * scrollDistanceMultiplier),
-        ),
-      );
-      unawaited(scrollController.animateTo(
-        newScrollOffset + renderObjectTop,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.ease,
-      ));
+          renderObjectBottom - viewportExtent + 100.0,
+          math.max(-renderObjectTop,
+              scrollOffset + (scrollDelta * scrollDistanceMultiplier)));
+      unawaited(scrollController.animateTo(newScrollOffset + renderObjectTop,
+          duration: const Duration(milliseconds: 250), curve: Curves.ease));
     }
   }
 
+  /// Builds the selection handles and optionally the popup menu.
   List<Widget> buildSelectionControls(
-      Selection? selection,
-      BuildContext context,
-      BoxConstraints constraints,
-      SelectionDelegate selectionDelegate,
-      GlobalKey mainKey,
-      ScrollController? scrollController,
-      double topOverlayHeight,
-      bool useExperimentalPopupMenu,
-      ) {
-    if (selection == null || !selection.isTextSelected) return [];
+    Selection? selection,
+    BuildContext context,
+    BoxConstraints constraints,
+    SelectionDelegate selectionDelegate,
+    GlobalKey mainKey,
+    ScrollController? scrollController,
+    double topOverlayHeight,
+    // This is okay.
+    // ignore: avoid_positional_boolean_parameters
+    bool useExperimentalPopupMenu,
+  ) {
+    // If there is no selection, return an empty list.
+    if (selection == null || !selection.isTextSelected) return []; //------->
 
     final startLineHeight = selection.rects!.first.height;
     final endLineHeight = selection.rects!.last.height;
 
     final isRtl = Directionality.maybeOf(context) == TextDirection.rtl;
+    // final r = selection.rects!;
+    // print('\n${r.map((r) => '(l${r.left.s}, t${r.top.s})').join('\n')}\n');
 
     final startHandleType = isRtl && !usingCupertinoControls
         ? TextSelectionHandleType.right
@@ -117,50 +112,39 @@ class SelectableBuildHelper {
         : TextSelectionHandleType.right;
 
     final startOffset =
-    controls!.getHandleAnchor(startHandleType, startLineHeight);
+        controls!.getHandleAnchor(startHandleType, startLineHeight);
     final endOffset = controls!.getHandleAnchor(endHandleType, endLineHeight);
 
     final startHandlePt = isRtl
         ? selection.rects!.first.bottomRight
         : selection.rects!.first.bottomLeft;
-    final endHandlePt = usingCupertinoControls
+    final endHandlePt = (usingCupertinoControls
         ? (isRtl
-        ? selection.rects!.last.topLeft
-        : selection.rects!.last.topRight)
+            ? selection.rects!.last.topLeft
+            : selection.rects!.last.topRight)
         : (isRtl
-        ? selection.rects!.last.bottomLeft
-        : selection.rects!.last.bottomRight);
+            ? selection.rects!.last.bottomLeft
+            : selection.rects!.last.bottomRight));
 
     final startPt = Offset(
-      startHandlePt.dx - startOffset.dx,
-      startHandlePt.dy - startOffset.dy,
-    );
+        startHandlePt.dx - startOffset.dx, startHandlePt.dy - startOffset.dy);
     final endPt = Offset(endHandlePt.dx - endOffset.dx, endHandlePt.dy);
 
     final startSize = controls!.getHandleSize(startLineHeight);
     final endSize = controls!.getHandleSize(endLineHeight);
 
     final startRect =
-    Rect.fromLTWH(startPt.dx, startPt.dy, startSize.width, startSize.height)
-        .inflate(20);
+        Rect.fromLTWH(startPt.dx, startPt.dy, startSize.width, startSize.height)
+            .inflate(20);
     final endRect =
-    Rect.fromLTWH(endPt.dx, endPt.dy, endSize.width, endSize.height)
-        .inflate(20);
+        Rect.fromLTWH(endPt.dx, endPt.dy, endSize.width, endSize.height)
+            .inflate(20);
 
-    if (showPopupMenu && !isScrolling) {
-      final popupMenu = _PopupMenu(
-        constraints: constraints,
-        controls: controls!,
-        mainKey: mainKey,
-        scrollController: scrollController,
-        selectionDelegate: selectionDelegate,
-        selectionRects: selection.rects!,
-        topOverlayHeight: topOverlayHeight,
-        isShowing: showPopupMenu,
-        useExperimentalPopupMenu: useExperimentalPopupMenu,
-      );
-      return [popupMenu];
-    }
+    final isShowingPopupMenu = (showPopupMenu && !isScrolling);
+    // dmPrint('SelectionUpdater.buildSelectionControls isShowingPopupMenu ==
+    // $isShowingPopupMenu');
+    // dmPrint('buildSelectionControls, showPopupMenu = $showPopupMenu,
+    // isScrolling = $isScrolling');
 
     return [
       Positioned.fromRect(
@@ -169,11 +153,8 @@ class SelectableBuildHelper {
           delegate: selectionDelegate,
           handleType: SelectionHandleType.left,
           mainKey: mainKey,
-          child: controls!.buildHandle(
-            context,
-            startHandleType,
-            startLineHeight,
-          ),
+          child:
+              controls!.buildHandle(context, startHandleType, startLineHeight),
         ),
       ),
       Positioned.fromRect(
@@ -182,16 +163,35 @@ class SelectableBuildHelper {
           delegate: selectionDelegate,
           handleType: SelectionHandleType.right,
           mainKey: mainKey,
-          child: controls!.buildHandle(
-            context,
-            endHandleType,
-            endLineHeight,
+          child: controls!.buildHandle(context, endHandleType, endLineHeight),
+        ),
+      ),
+      AnimatedOpacity(
+        opacity: isShowingPopupMenu ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 200),
+        child: IgnorePointer(
+          // Ignore gestures (e.g. taps) on the popup menu if it's not showing.
+          ignoring: !isShowingPopupMenu,
+          child: _PopupMenu(
+            constraints: constraints,
+            controls: controls!,
+            mainKey: mainKey,
+            scrollController: scrollController,
+            selectionDelegate: selectionDelegate,
+            selectionRects: selection.rects!,
+            topOverlayHeight: topOverlayHeight,
+            isShowing: isShowingPopupMenu,
+            useExperimentalPopupMenu: useExperimentalPopupMenu,
           ),
         ),
       ),
     ];
   }
 }
+
+// extension on double {
+//   String get s => toStringAsFixed(0).padLeft(4, ' ');
+// }
 
 class _PopupMenu extends StatefulWidget {
   const _PopupMenu({
@@ -221,98 +221,76 @@ class _PopupMenu extends StatefulWidget {
 }
 
 class _PopupMenuState extends State<_PopupMenu> {
-  OverlayEntry? _overlayEntry;
-
   @override
-  void didUpdateWidget(covariant _PopupMenu oldWidget) {
-    super.didUpdateWidget(oldWidget);
+  void didUpdateWidget(covariant _PopupMenu old) {
+    super.didUpdateWidget(old);
 
+    // Only rebuild the menu if it is showing.
     if (widget.isShowing) {
-      _showOverlay();
-    } else {
-      _removeOverlay();
+      // dmPrint('Selectable popup menu rebuild triggered by didUpdateWidget');
+      _menu = null;
     }
   }
 
-  void _showOverlay() {
-    if (_overlayEntry == null) {
-      _overlayEntry = _buildOverlay();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Overlay.of(context).insert(_overlayEntry!);
-      });
-    }
-  }
-
-  void _removeOverlay() {
-    if (_overlayEntry != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _overlayEntry?.remove();
-        _overlayEntry = null;
-      });
-    }
-  }
-
-  OverlayEntry _buildOverlay() {
-    Rect? viewport = Rect.fromLTWH(
-      0,
-      0,
-      widget.constraints.maxWidth,
-      widget.constraints.maxHeight,
-    );
-
-    if (widget.scrollController?.hasOneClient ?? false) {
-      final renderObject = widget.mainKey.currentContext!.findRenderObject();
-      final vp = RenderAbstractViewport.maybeOf(renderObject);
-      if (vp != null) {
-        try {
-          final renderObjScrollPos =
-              renderObject!.getTransformTo(vp).getTranslation().y;
-          final scrollOffset = -renderObjScrollPos + widget.topOverlayHeight;
-          final viewportExtent =
-              widget.scrollController!.position.viewportDimension -
-                  widget.topOverlayHeight;
-          viewport = Rect.fromLTWH(
-            0,
-            scrollOffset,
-            viewport.width,
-            viewportExtent,
-          ).intersect(viewport);
-        } catch (e) {
-          print('Error building popup menu viewport: $e');
-        }
-      }
-    }
-
-    final popupMenu = widget.controls.buildPopupMenu(
-      context,
-      viewport!,
-      widget.selectionRects,
-      widget.selectionDelegate,
-      widget.topOverlayHeight,
-      widget.useExperimentalPopupMenu,
-    );
-
-    return OverlayEntry(
-      builder: (context) => Positioned(
-        left: viewport?.left,
-        top: viewport?.top,
-        child: Material(
-          elevation: 4,
-          child: popupMenu,
-        ),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _removeOverlay();
-    super.dispose();
-  }
+  Widget? _menu;
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox();
+    if (_menu == null) {
+      // dmPrint('rebuilding menu...');
+
+      // [viewport] is the rectangle that can be seen, in render object
+      // coordinates, which defaults to the render object rect.
+      Rect? viewport = Rect.fromLTWH(
+          0, 0, widget.constraints.maxWidth, widget.constraints.maxHeight);
+
+      // If there is a scroll controller, update the viewport to the visible
+      // rect in render object coordinates.
+      if (widget.scrollController?.hasOneClient ?? false) {
+        final renderObject = widget.mainKey.currentContext!.findRenderObject();
+        final vp = RenderAbstractViewport.maybeOf(renderObject);
+        assert(vp != null);
+        if (vp != null) {
+          try {
+            final renderObjScrollPos =
+                renderObject!.getTransformTo(vp).getTranslation().y;
+            final scrollOffset = -renderObjScrollPos + widget.topOverlayHeight;
+            final viewportExtent =
+                widget.scrollController!.position.viewportDimension -
+                    widget.topOverlayHeight;
+            viewport =
+                Rect.fromLTWH(0, scrollOffset, viewport.width, viewportExtent)
+                    .intersect(viewport);
+            if (viewport.height < 50) viewport = null;
+          } catch (e) {
+            dmPrint('Selectable popup menu build error: $e');
+          }
+        }
+        // } else {
+        //   if (widget.scrollController == null) {
+        //     dmPrint('scrollController == null');
+        //   } else {
+        //     dmPrint('scrollController.clientCount: '
+        //         '${widget.scrollController!.clientCount}');
+        //   }
+      }
+
+      if (viewport != null) {
+        // dmPrint('buildPopupMenu with viewport $viewport, '
+        //     'topOverlayHeight: ${widget.topOverlayHeight}');
+        _menu = widget.controls.buildPopupMenu(
+            context,
+            viewport,
+            widget.selectionRects,
+            widget.selectionDelegate,
+            widget.topOverlayHeight,
+            widget.useExperimentalPopupMenu);
+      } else {
+        _menu = const SizedBox();
+      }
+    }
+
+    return _menu!;
   }
 }
 
@@ -345,10 +323,12 @@ class _SelectionHandle extends StatelessWidget {
   }
 
   void _onPanEnd(DragEndDetails details) {
+    // dmPrint('onPanEnd');
     delegate.onDragSelectionHandleEnd(handleType);
   }
 
   void _onPanCancel() {
+    // dmPrint('onPanCancel');
     delegate.onDragSelectionHandleEnd(handleType);
   }
 
@@ -363,6 +343,7 @@ class _SelectionHandle extends StatelessWidget {
       behavior: HitTestBehavior.translucent,
       child: Container(
         padding: const EdgeInsets.all(20),
+        //color: Colors.orange.withAlpha(50),
         child: child,
       ),
     );
