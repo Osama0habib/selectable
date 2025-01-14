@@ -237,13 +237,19 @@ class _PopupMenuState extends State<_PopupMenu> {
   void _showOverlay() {
     if (_overlayEntry == null) {
       _overlayEntry = _buildOverlay();
-      Overlay.of(context).insert(_overlayEntry!);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Overlay.of(context).insert(_overlayEntry!);
+      });
     }
   }
 
   void _removeOverlay() {
-    _overlayEntry?.remove();
-    _overlayEntry = null;
+    if (_overlayEntry != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _overlayEntry?.remove();
+        _overlayEntry = null;
+      });
+    }
   }
 
   OverlayEntry _buildOverlay() {
