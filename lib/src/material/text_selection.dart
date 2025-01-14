@@ -1,240 +1,42 @@
-// Adapted from flutter/lib/src/material/text_selection.dart
-
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
 import '../selection_controls.dart';
 
-// The original file ignores these lints.
-// ignore_for_file: omit_local_variable_types
-// ignore_for_file: curly_braces_in_flow_control_structures
-// ignore_for_file: cascade_invocations, prefer_const_constructors
-
-/// Text selection controls that follow the Material Design specification.
 final SelectionControls exMaterialTextSelectionControls =
-    _MaterialTextSelectionControls();
+_MaterialTextSelectionControls();
 
 const double _kHandleSize = 22.0;
 const double _kButtonPadding = 10.0;
 
-// Minimal padding from all edges of the selection popup menu to all edges of
-// the viewport.
-const double _kPopupMenuScreenPadding = 8.0;
-const double _kPopupMenuHeight = 44.0;
-const double _kPopupMenuContentDistance = 8.0;
-
-/// Manages a copy/paste text selection popup menu.
-class _TextSelectionPopupMenu extends StatelessWidget {
-  const _TextSelectionPopupMenu({this.delegate});
-
-  final SelectionDelegate? delegate;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    //final localizations = MaterialLocalizations.of(context);
-    final items = delegate!.menuItems
-        .expand<Widget>((e) => e.isEnabled!(delegate!.controller)
-            ? [
-                _Button(
-                  icon: e.icon,
-                  title: e.title ?? '',
-                  isDarkMode: isDarkMode,
-                  onPressed: () => e.handler!(delegate!.controller),
-                )
-              ]
-            : [])
-        .toList();
-
-    // If there is no option available, build an empty widget.
-    if (items.isEmpty) {
-      // dmPrint('_TextSelectionPopupMenu is not showing because '
-      //     'items.isEmpty.');
-      return SizedBox.shrink();
-    }
-
-    return Material(
-      elevation: 4.0,
-      color: Theme.of(context).canvasColor,
-      borderRadius: BorderRadius.circular(8),
-      child: Theme(
-        data: ThemeData(buttonTheme: ButtonThemeData(minWidth: 0)),
-        child: Container(
-          height: _kPopupMenuHeight,
-          padding: EdgeInsets.symmetric(horizontal: _kButtonPadding),
-          child: Row(mainAxisSize: MainAxisSize.min, children: items),
-        ),
-      ),
-    );
-  }
-}
-
-const TextStyle popupMenuTextStyle = TextStyle(
-  fontSize: 16,
-  fontWeight: FontWeight.w500,
-);
-
-class _Button extends StatelessWidget {
-  const _Button({
-    required this.icon,
-    required this.title,
-    required this.isDarkMode,
-    required this.onPressed,
-  });
-
-  final IconData? icon;
-  final String title;
-  final bool? isDarkMode;
-  final void Function()? onPressed;
-
-  Widget get _text => Text(
-        icon == null ? title : ' $title',
-        style: popupMenuTextStyle.copyWith(
-            color: isDarkMode! ? Colors.white : Colors.black),
-      );
-
-  @override
-  Widget build(BuildContext context) => TextButton(
-        style: TextButton.styleFrom(
-            padding: EdgeInsets.symmetric(horizontal: _kButtonPadding)),
-        onPressed: onPressed,
-        child: icon == null
-            ? _text
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    icon,
-                    size: 20.0 *
-                        (MediaQuery.textScalerOf(context).scale(18) / 18.0),
-                    color: isDarkMode! ? Colors.white : Colors.black,
-                  ),
-                  _text,
-                ],
-              ),
-      );
-}
-
-/// Centers the popup menu around the given position, ensuring that it remains
-/// on screen.
-class _TextSelectionPopupMenuLayout extends SingleChildLayoutDelegate {
-  const _TextSelectionPopupMenuLayout(this.maxWidth, this.position);
-
-  /// The size of the screen at the time that the popup menu was last laid out.
-  final double maxWidth;
-
-  /// Anchor position of the popup menu.
-  final Offset position;
-
-  @override
-  BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
-    return constraints.loosen();
-  }
-
-  @override
-  Offset getPositionForChild(Size size, Size childSize) {
-    final Offset globalPosition = position;
-
-    var x = globalPosition.dx - childSize.width / 2.0;
-    final y = globalPosition.dy - childSize.height;
-
-    if (x < _kPopupMenuScreenPadding)
-      x = _kPopupMenuScreenPadding;
-    else if (x + childSize.width > maxWidth - _kPopupMenuScreenPadding)
-      x = maxWidth - childSize.width - _kPopupMenuScreenPadding;
-
-    return Offset(x, y);
-  }
-
-  @override
-  bool shouldRelayout(_TextSelectionPopupMenuLayout oldDelegate) {
-    return position != oldDelegate.position;
-  }
-}
-
-/// Draws a single text selection handle which points up and to the left.
-class _TextSelectionHandlePainter extends CustomPainter {
-  const _TextSelectionHandlePainter({this.color});
-
-  final Color? color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()..color = color!;
-    final double radius = size.width / 2.0;
-    canvas.drawCircle(Offset(radius, radius), radius, paint);
-    canvas.drawRect(Rect.fromLTWH(0.0, 0.0, radius, radius), paint);
-  }
-
-  @override
-  bool shouldRepaint(_TextSelectionHandlePainter oldPainter) {
-    return color != oldPainter.color;
-  }
-}
-
 class _MaterialTextSelectionControls extends SelectionControls {
-  OverlayEntry? _toolbarOverlayEntry;
+  OverlayEntry? _overlayEntry;
 
-  @override
-  Size getHandleSize(double textLineHeight) =>
-      const Size(_kHandleSize, _kHandleSize);
+  /// Shows the context menu as an overlay.
+  void _showOverlay(BuildContext context, Offset position, Widget menu) {
+    _removeOverlay(); // Remove any existing overlay before showing a new one.
 
-  /// Shows the popup menu as an overlay entry.
-  void _showOverlay(BuildContext context, Offset anchor, SelectionDelegate delegate) {
-    _removeOverlay(); // Remove any existing overlay
-
-    _toolbarOverlayEntry = OverlayEntry(
+    _overlayEntry = OverlayEntry(
       builder: (context) {
         return Positioned(
-          left: anchor.dx,
-          top: anchor.dy,
+          left: position.dx,
+          top: position.dy,
           child: Material(
             elevation: 4.0,
-            color: Theme.of(context).canvasColor,
-            borderRadius: BorderRadius.circular(8),
-            child: Theme(
-              data: ThemeData(buttonTheme: ButtonThemeData(minWidth: 0)),
-              child: Container(
-                height: _kPopupMenuHeight,
-                padding: EdgeInsets.symmetric(horizontal: _kButtonPadding),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: _buildPopupMenuItems(delegate, context),
-                ),
-              ),
-            ),
+            child: menu,
           ),
         );
       },
     );
 
-    Overlay.of(context).insert(_toolbarOverlayEntry!);
+    Overlay.of(context).insert(_overlayEntry!);
   }
 
-  /// Removes the popup menu overlay.
+  /// Hides the context menu overlay.
   void _removeOverlay() {
-    _toolbarOverlayEntry?.remove();
-    _toolbarOverlayEntry = null;
-  }
-
-  /// Builds the popup menu items based on the provided `SelectionDelegate`.
-  List<Widget> _buildPopupMenuItems(SelectionDelegate delegate, BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final items = delegate.menuItems
-        .expand<Widget>((e) => e.isEnabled!(delegate.controller)
-        ? [
-      _Button(
-        icon: e.icon,
-        title: e.title ?? '',
-        isDarkMode: isDarkMode,
-        onPressed: () => e.handler!(delegate.controller),
-      )
-    ]
-        : [])
-        .toList();
-
-    return items.isEmpty ? [SizedBox.shrink()] : items;
+    _overlayEntry?.remove();
+    _overlayEntry = null;
   }
 
   @override
@@ -246,48 +48,17 @@ class _MaterialTextSelectionControls extends SelectionControls {
       double topOverlayHeight,
       bool useExperimentalPopupMenu,
       ) {
-    assert(debugCheckHasMediaQuery(context));
-    assert(debugCheckHasMaterialLocalizations(context));
+    final Offset position = Offset(
+      (selectionRects!.first.left + selectionRects.last.right) / 2,
+      selectionRects.first.top - 50, // Adjust offset as needed.
+    );
 
-    const double popupMenuHeightNeeded = _kPopupMenuScreenPadding +
-        _kPopupMenuHeight +
-        _kPopupMenuContentDistance;
+    final menu = _TextSelectionPopupMenu(delegate: delegate);
 
-    final primaryY = math.min(
-        viewport.bottom - (_kPopupMenuContentDistance * 3.0),
-        selectionRects!.first.top - _kPopupMenuContentDistance);
+    _showOverlay(context, position, menu);
 
-    double? secondaryY;
-
-    if (viewport.bottom - selectionRects.last.bottom >=
-        _kHandleSize + _kPopupMenuHeight + _kPopupMenuContentDistance) {
-      secondaryY = math.max(
-          viewport.top + _kPopupMenuContentDistance + _kPopupMenuHeight,
-          selectionRects.last.bottom +
-              _kHandleSize +
-              _kPopupMenuHeight +
-              _kPopupMenuContentDistance);
-    } else {
-      secondaryY = viewport.center.dy;
-    }
-
-    final arrowTipX =
-        (selectionRects.last.left + selectionRects.first.right) / 2.0;
-
-    var localBarTopY = 0.0;
-    if (selectionRects.first.top - viewport.top >= popupMenuHeightNeeded) {
-      localBarTopY = primaryY;
-    } else {
-      localBarTopY = secondaryY;
-    }
-
-    final Offset preciseMidpoint = Offset(arrowTipX, localBarTopY);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _showOverlay(context, preciseMidpoint, delegate);
-    });
-
-    return SizedBox.shrink(); // Return an empty widget since we're using an overlay
+    // Return a placeholder widget, as the actual menu is now in the overlay.
+    return const SizedBox();
   }
 
   @override
@@ -301,27 +72,22 @@ class _MaterialTextSelectionControls extends SelectionControls {
       width: _kHandleSize,
       height: _kHandleSize,
       child: CustomPaint(
-        painter: _TextSelectionHandlePainter(
-          color: handleColor,
-        ),
+        painter: _TextSelectionHandlePainter(color: handleColor),
       ),
     );
 
     switch (type) {
-      case TextSelectionHandleType.left: // points up-right
-        return Transform.rotate(
-          angle: math.pi / 2.0,
-          child: handle,
-        );
-      case TextSelectionHandleType.right: // points up-left
+      case TextSelectionHandleType.left:
+        return Transform.rotate(angle: math.pi / 2.0, child: handle);
+      case TextSelectionHandleType.right:
         return handle;
-      case TextSelectionHandleType.collapsed: // points up
-        return Transform.rotate(
-          angle: math.pi / 4.0,
-          child: handle,
-        );
+      case TextSelectionHandleType.collapsed:
+        return Transform.rotate(angle: math.pi / 4.0, child: handle);
     }
   }
+
+  @override
+  Size getHandleSize(double textLineHeight) => const Size(_kHandleSize, _kHandleSize);
 
   @override
   Offset getHandleAnchor(TextSelectionHandleType type, double textLineHeight) {
@@ -330,9 +96,103 @@ class _MaterialTextSelectionControls extends SelectionControls {
         return const Offset(_kHandleSize, 0);
       case TextSelectionHandleType.right:
         return Offset.zero;
-      default:
+      case TextSelectionHandleType.collapsed:
         return const Offset(_kHandleSize / 2, -4);
     }
   }
 }
 
+class _TextSelectionHandlePainter extends CustomPainter {
+  const _TextSelectionHandlePainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()..color = color;
+    final double radius = size.width / 2.0;
+    canvas.drawCircle(Offset(radius, radius), radius, paint);
+    canvas.drawRect(Rect.fromLTWH(0.0, 0.0, radius, radius), paint);
+  }
+
+  @override
+  bool shouldRepaint(_TextSelectionHandlePainter oldPainter) {
+    return color != oldPainter.color;
+  }
+}
+
+class _TextSelectionPopupMenu extends StatelessWidget {
+  const _TextSelectionPopupMenu({required this.delegate});
+
+  final SelectionDelegate delegate;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final items = delegate.menuItems
+        .where((item) => item.isEnabled!(delegate.controller))
+        .map((item) => _PopupMenuButton(
+      icon: item.icon,
+      title: item.title ?? '',
+      isDarkMode: isDarkMode,
+      onPressed: () => item.handler!(delegate.controller),
+    ))
+        .toList();
+
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Material(
+      elevation: 4.0,
+      color: Theme.of(context).canvasColor,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        height: 44.0,
+        padding: const EdgeInsets.symmetric(horizontal: _kButtonPadding),
+        child: Row(mainAxisSize: MainAxisSize.min, children: items),
+      ),
+    );
+  }
+}
+
+class _PopupMenuButton extends StatelessWidget {
+  const _PopupMenuButton({
+    this.icon,
+    required this.title,
+    required this.isDarkMode,
+    required this.onPressed,
+  });
+
+  final IconData? icon;
+  final String title;
+  final bool isDarkMode;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: _kButtonPadding),
+      ),
+      onPressed: onPressed,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null)
+            Icon(
+              icon,
+              size: 20.0,
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
+          Text(
+            icon == null ? title : ' $title',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
