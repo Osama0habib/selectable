@@ -175,7 +175,7 @@ class _PopupMenuRenderBox extends RenderShiftedBox {
     }
     final BoxConstraints enforcedConstraint = constraints
         .deflate(
-            const EdgeInsets.symmetric(horizontal: _kPopupMenuScreenPadding))
+        const EdgeInsets.symmetric(horizontal: _kPopupMenuScreenPadding))
         .loosen();
 
     child!.layout(
@@ -183,7 +183,7 @@ class _PopupMenuRenderBox extends RenderShiftedBox {
       parentUsesSize: true,
     );
     final _PopupMenuParentData childParentData =
-        (child!.parentData as _PopupMenuParentData?)!;
+    (child!.parentData as _PopupMenuParentData?)!;
 
     // The local x-coordinate of the center of the popup menu.
     final double lowerBound = child!.size.width / 2 + _kPopupMenuScreenPadding;
@@ -195,6 +195,7 @@ class _PopupMenuRenderBox extends RenderShiftedBox {
         Offset(adjustedCenterX - child!.size.width / 2, _barTopY!);
     childParentData.arrowXOffsetFromCenter = _arrowTipX! - adjustedCenterX;
   }
+
 
   // The path is described in the popup menu's coordinate system.
   Path _clipPath() {
